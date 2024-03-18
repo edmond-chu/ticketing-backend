@@ -10,8 +10,12 @@ const connectionString = 'YourPostgresConnectionStringHere'; // Adjust this acco
 //     port: 5432, // Default PostgreSQL port
 //   });
 
+
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
+    ssl: {
+        rejectUnauthorized: false, // Note: For secure production setups, provide the CA certificate.
+    },
   });
 
 console.log(process.env.DATABASE_URL);
