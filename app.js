@@ -1,61 +1,146 @@
 const express = require("express");
+const bodyParser = require("body-parser");
+const cors = require("cors");
+const { v4: uuidv4 } = require("uuid"); // Import the version 4 method to generate random UUIDs
+const {initializeDb, pool} = require("./db-handler"); // Import the initializeDb function
+
 const app = express();
-const port = process.env.PORT || 3001;
+app.use(bodyParser.json());
+app.use(cors());
 
-app.get("/", (req, res) => res.type('html').send(html));
+// Initialize database tables
+initializeDb().then(() => {
+  // Database initialization is complete, now start the server
+  const PORT = process.env.PORT || 5002; // It's a good practice to allow configuration of the port
+  app.listen(PORT, () => {
+    console.log(`Server listening on port ${PORT}`);
+  });
+}).catch(err => {
+  console.error("Failed to initialize database:", err);
+  process.exit(1); // Exit the app with an error code if the DB can't be initialized
+});
 
-const server = app.listen(port, () => console.log(`Example app listening on port ${port}!`));
 
-server.keepAliveTimeout = 120 * 1000;
-server.headersTimeout = 120 * 1000;
+//create response
+app.post('/api/v1/tickets/:ticketId/responses', async (req, res) => {
+  const { ticketId } = req.params;
+  const { description } = req.body;
 
-const html = `
-<!DOCTYPE html>
-<html>
-  <head>
-    <title>Hello from Render!</title>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
-    <script>
-      setTimeout(() => {
-        confetti({
-          particleCount: 100,
-          spread: 70,
-          origin: { y: 0.6 },
-          disableForReducedMotion: true
-        });
-      }, 500);
-    </script>
-    <style>
-      @import url("https://p.typekit.net/p.css?s=1&k=vnd5zic&ht=tk&f=39475.39476.39477.39478.39479.39480.39481.39482&a=18673890&app=typekit&e=css");
-      @font-face {
-        font-family: "neo-sans";
-        src: url("https://use.typekit.net/af/00ac0a/00000000000000003b9b2033/27/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n7&v=3") format("woff2"), url("https://use.typekit.net/af/00ac0a/00000000000000003b9b2033/27/d?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n7&v=3") format("woff"), url("https://use.typekit.net/af/00ac0a/00000000000000003b9b2033/27/a?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n7&v=3") format("opentype");
-        font-style: normal;
-        font-weight: 700;
+  try {
+      // First, check if the specified ticket exists
+      const ticketCheckResult = await pool.query('SELECT 1 FROM tickets WHERE id = $1', [ticketId]);
+      if (ticketCheckResult.rowCount === 0) {
+          // If the ticket does not exist, return a 404 error
+          return [];
       }
-      html {
-        font-family: neo-sans;
-        font-weight: 700;
-        font-size: calc(62rem / 16);
+
+      // If the ticket exists, insert the new response
+      const insertResult = await pool.query(
+          'INSERT INTO responses (ticket_id, description) VALUES ($1, $2) RETURNING *;',
+          [ticketId, description]
+      );  
+      console.log("Lookup ticketId: "+ ticketId +" and notify via email");
+      // Return the newly created response
+      res.status(201).json(insertResult.rows[0]);
+  } catch (error) {
+      console.error('Failed to create response:', error);
+      res.status(500).json({ error: "Internal server error" });
+  }
+});
+//Get responses
+app.get('/api/v1/tickets/:ticketId/responses', async (req, res) => {
+    const { ticketId } = req.params;
+
+    try {
+        // Query to select all responses for the specified ticket ID
+        const queryResult = await pool.query(
+            'SELECT * FROM responses WHERE ticket_id = $1',
+            [ticketId]
+        );
+
+        // If responses exist, send them back to the client
+        if (queryResult.rows.length > 0) {
+            res.status(200).json(queryResult.rows);
+        } else {
+            // If no responses are found, return a message indicating so
+            res.status(404).json({ message: 'No responses found for this ticket' });
+        }
+    } catch (error) {
+        console.error('Error fetching responses:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+
+// POST /api/v1/tickets - Create a new ticket
+app.post("/api/v1/tickets", async (req, res) => {
+  const { name, email, description, status = 'new' } = req.body;
+  const id = uuidv4(); // Generate a new UUID for this ticket
+  try {
+      const result = await pool.query(
+          "INSERT INTO tickets (id, name, email, description, status) VALUES ($1, $2, $3, $4, $5) RETURNING *;",
+          [id, name, email, description, status]
+      );
+      res.status(201).json(result.rows[0]);
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /api/v1/tickets - Retrieve all tickets
+app.get("/api/v1/tickets", async (req, res) => {
+  try {
+      const result = await pool.query("SELECT * FROM tickets;");
+      res.status(200).json(result.rows);
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /api/v1/tickets/:id - Retrieve a single ticket by ID
+app.get("/api/v1/tickets/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+      const result = await pool.query("SELECT * FROM tickets WHERE id = $1;", [id]);
+      if (result.rows.length > 0) {
+          res.status(200).json(result.rows[0]);
+      } else {
+          res.status(404).json({ message: "Ticket not found" });
       }
-      body {
-        background: white;
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// PUT /api/v1/tickets/:id - Update a ticket's status to "in progress" or "resolved"
+app.put("/api/v1/tickets/:id", async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  // Validate the status field
+  if (!['in progress', 'resolved'].includes(status.toLowerCase())) {
+      // If status is not one of the allowed values, return a 400 Bad Request response
+      return res.status(400).json({ error: "Status is invalid" });
+  }
+
+  try {
+      const result = await pool.query(
+          "UPDATE tickets SET status = $1 WHERE id = $2 RETURNING *;",
+          [status, id]
+      );
+      if (result.rows.length > 0) {
+          res.status(200).json(result.rows[0]);
+      } else {
+          // If the ticket with the specified ID does not exist, return a 404 Not Found response
+          res.status(404).json({ message: "Ticket not found" });
       }
-      section {
-        border-radius: 1em;
-        padding: 1em;
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        margin-right: -50%;
-        transform: translate(-50%, -50%);
-      }
-    </style>
-  </head>
-  <body>
-    <section>
-      Hello from Render!
-    </section>
-  </body>
-</html>
-`
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
