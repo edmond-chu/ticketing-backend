@@ -1,3 +1,4 @@
+require('dotenv').config();
 const { Pool } = require('pg');
 const connectionString = 'YourPostgresConnectionStringHere'; // Adjust this accordingly
 
@@ -12,6 +13,8 @@ const connectionString = 'YourPostgresConnectionStringHere'; // Adjust this acco
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
   });
+
+console.log(process.env.DATABASE_URL);
   
 const initTableScript = `
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
