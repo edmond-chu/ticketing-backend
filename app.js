@@ -1,8 +1,8 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
-const { v4: uuidv4 } = require("uuid"); // Import the version 4 method to generate random UUIDs
-const {initializeDb, pool} = require("./db-handler"); // Import the initializeDb function
+const { v4: uuidv4 } = require("uuid"); 
+const {initializeDb, pool} = require("./db-handler"); 
 
 const app = express();
 app.use(bodyParser.json());
@@ -10,14 +10,13 @@ app.use(cors());
 
 // Initialize database tables
 initializeDb().then(() => {
-  // Database initialization is complete, now start the server
-  const PORT = process.env.PORT || 5002; // It's a good practice to allow configuration of the port
+  const PORT = process.env.PORT || 5002; 
   app.listen(PORT, () => {
     console.log(`Server listening on port ${PORT}`);
   });
 }).catch(err => {
   console.error("Failed to initialize database:", err);
-  process.exit(1); // Exit the app with an error code if the DB can't be initialized
+  process.exit(1); 
 });
 
 
