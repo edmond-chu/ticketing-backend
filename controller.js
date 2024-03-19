@@ -95,7 +95,7 @@ exports.getResponsesForTicket = async (req, res) => {
         if (queryResult.rows.length > 0) {
             res.status(200).json(queryResult.rows);
         } else {
-            res.status(200).json({ message: "No responses found for this ticket" });
+            res.status(200).json([]);
         }
     } catch (error) {
         console.error('Error fetching responses:', error);
