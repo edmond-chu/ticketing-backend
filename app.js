@@ -91,7 +91,7 @@ app.post("/api/v1/tickets", async (req, res) => {
 // GET /api/v1/tickets - Retrieve all tickets
 app.get("/api/v1/tickets", async (req, res) => {
   try {
-      const result = await pool.query("SELECT * FROM tickets");
+      const result = await pool.query("SELECT * FROM tickets WHERE LOWER(status) != LOWER('resolved')");
       res.status(200).json(result.rows);
   } catch (error) {
       console.error(error);
