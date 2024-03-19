@@ -2,23 +2,14 @@ require('dotenv').config();
 const { Pool } = require('pg');
 const connectionString = 'YourPostgresConnectionStringHere'; // Adjust this accordingly
 
+
 const pool = new Pool({
-    user: "postgres",
-    host: "localhost",
-    database: "postgres",
-    password: "postgres",
-    port: 5432, // Default PostgreSQL port
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+        rejectUnauthorized: false, // Note: For secure production setups, provide the CA certificate.
+    },
   });
 
-
-// const pool = new Pool({
-//     connectionString: process.env.DATABASE_URL,
-//     ssl: {
-//         rejectUnauthorized: false, // Note: For secure production setups, provide the CA certificate.
-//     },
-//   });
-
-console.log(process.env.DATABASE_URL);
   
 const initTableScript = `
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
