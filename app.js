@@ -31,7 +31,8 @@ app.post('/api/v1/tickets/:ticketId/responses', async (req, res) => {
       const ticketCheckResult = await pool.query('SELECT 1 FROM tickets WHERE id = $1', [ticketId]);
       if (ticketCheckResult.rowCount === 0) {
           // If the ticket does not exist, return a 404 error
-          return [];
+          res.status(404).json({ message: 'Ticket not found' });
+
       }
 
       // If the ticket exists, insert the new response
@@ -63,7 +64,7 @@ app.get('/api/v1/tickets/:ticketId/responses', async (req, res) => {
             res.status(200).json(queryResult.rows);
         } else {
             // If no responses are found, return a message indicating so
-            res.status(404).json({ message: 'No responses found for this ticket' });
+            res.status(200).json([]);
         }
     } catch (error) {
         console.error('Error fetching responses:', error);
